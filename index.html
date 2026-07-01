@@ -394,6 +394,9 @@
         let timerInterval = null;
         let teams = [];
         let isStopped = false;
+        let lastAlertSecond = null;
+        let warningPlayed = false;
+        let audioCtx = null;
 
         const mainTimer = document.getElementById('mainTimer');
         const timerInput = document.getElementById('timerInput');
@@ -441,23 +444,34 @@
             });
         }
 
-        function formatTime(time) {
+        function formatTime(time, compact = false, showMilliseconds = true, forceHours = false) {
             const totalMs = Math.max(0, time);
-            const hours = String(Math.floor(totalMs / 3600000)).padStart(2, '0');
-            const minutes = String(Math.floor((totalMs % 3600000) / 60000)).padStart(2, '0');
-            const seconds = String(Math.floor((totalMs % 60000) / 1000)).padStart(2, '0');
-            return `${hours}:${minutes}:${seconds}`;
+            const hours = Math.floor(totalMs / 3600000);
+            const minutes = Math.floor((totalMs % 3600000) / 60000);
+            const seconds = Math.floor((totalMs % 60000) / 1000);
+            const milliseconds = Math.floor((totalMs % 1000) / 100);
+            const secondsPart = showMilliseconds
+                ? `${String(seconds).padStart(2, '0')}.${milliseconds}`
+                : `${String(seconds).padStart(2, '0')}`;
+            const minSec = `${String(minutes).padStart(2, '0')}:${secondsPart}`;
+            const hourMinSec = `${String(hours).padStart(2, '0')}:${minSec}`;
+
+            if (forceHours || hours > 0) {
+                return hourMinSec;
+            }
+            return minSec;
         }
 
         function updateMainTimer() {
-            mainTimer.textContent = formatTime(remainingTime);
+            const showMilliseconds = remainingTime <= 10000;
+            mainTimer.textContent = formatTime(remainingTime, false, showMilliseconds);
         }
 
         mainTimer.addEventListener('click', () => {
             if (!isRunning) {
                 mainTimer.style.display = 'none';
                 timerInput.classList.add('active');
-                timerInput.value = formatTime(totalTime);
+                timerInput.value = formatTime(totalTime, true, true, true);
                 timerInput.focus();
                 timerInput.select();
             }
@@ -473,6 +487,45 @@
             }
         });
 
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            return audioCtx;
+        }
+
+        function playTone(frequency, duration, type = 'sine', volume = 0.08) {
+            const ctx = ensureAudioContext();
+            if (!ctx) return;
+            if (ctx.state === 'suspended') {
+                ctx.resume().catch(() => {});
+            }
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            oscillator.type = type;
+            oscillator.frequency.value = frequency;
+            gain.gain.value = volume;
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
+            oscillator.start();
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+            oscillator.stop(ctx.currentTime + duration);
+        }
+
+        function playCountdownAlert(secondsLeft) {
+            if (secondsLeft <= 0) {
+                playTone(1046.5, 0.25, 'triangle', 0.12);
+                setTimeout(() => playTone(1567.98, 0.35, 'sine', 0.1), 120);
+            } else if (secondsLeft <= 3) {
+                playTone(880, 0.35, 'square', 0.12);
+            } else {
+                playTone(660, 0.16, 'sine', 0.08);
+            }
+        }
+
         function saveTimerInput() {
             const value = timerInput.value.trim();
             if (value) {
@@ -482,6 +535,7 @@
                 const seconds = Math.min(Math.max(parts[2] || 0, 0), 59);
                 totalTime = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
                 remainingTime = totalTime;
+                timerInput.value = formatTime(totalTime, true, true, true);
             }
             timerInput.classList.remove('active');
             mainTimer.style.display = 'block';
@@ -500,10 +554,24 @@
                 startBtn.textContent = 'STOP';
                 addTeamBtn.disabled = true;
                 mainTimer.style.cursor = 'default';
+                lastAlertSecond = null;
+                warningPlayed = false;
                 renderTeams();
 
                 timerInterval = setInterval(() => {
                     remainingTime -= 100;
+                    const secondsLeft = Math.ceil(remainingTime / 1000);
+
+                    if (secondsLeft <= 10 && secondsLeft !== lastAlertSecond) {
+                        playCountdownAlert(secondsLeft);
+                        lastAlertSecond = secondsLeft;
+                    }
+
+                    if (secondsLeft <= 3 && !warningPlayed) {
+                        playCountdownAlert(3);
+                        warningPlayed = true;
+                    }
+
                     if (remainingTime <= 0) {
                         remainingTime = 0;
                         clearInterval(timerInterval);
@@ -511,6 +579,8 @@
                         startBtn.textContent = 'START';
                         updateMainTimer();
                         renderTeams();
+                        playCountdownAlert(0);
+                        showResults();
                         return;
                     }
                     updateMainTimer();
@@ -571,10 +641,12 @@
             startBtn.textContent = 'START';
             startBtn.disabled = true;
 
-            // Sort teams by time (most time remaining = fastest)
-            const sorted = [...teams]
-                .filter(t => t.time !== null)
-                .sort((a, b) => b.time - a.time);
+            const sorted = [...teams].sort((a, b) => {
+                if (a.time === null && b.time === null) return a.id - b.id;
+                if (a.time === null) return 1;
+                if (b.time === null) return -1;
+                return b.time - a.time;
+            });
 
             rankingList.innerHTML = '';
             const medals = ['🥇', '🥈', '🥉'];
@@ -587,13 +659,14 @@
                     <div class="ranking-medal">${medal}</div>
                     <div class="ranking-info">
                         <div class="ranking-name">${team.name}</div>
-                        <div class="ranking-time">${formatTime(team.time)}</div>
+                        <div class="ranking-time">${team.time !== null ? formatTime(team.time) : 'ยังไม่จบ'}</div>
                     </div>
                 `;
                 rankingList.appendChild(rankingDiv);
             });
 
             resultsSection.classList.add('show');
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     </script>
 </body>
