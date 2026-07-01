@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer ทีม</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Noto Sans Thai', Tahoma, Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+        }
+
+        .timer-display {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .main-timer {
+            font-size: 150px;
+            font-weight: bold;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 20px;
+            cursor: pointer;
+            padding: 20px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            user-select: none;
+            border: 3px solid transparent;
+        }
+
+        .main-timer:hover {
+            background-color: #f0f0f0;
+            border-color: #667eea;
+            transform: scale(1.02);
+        }
+
+        .timer-input {
+            font-size: 120px;
+            font-weight: bold;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            border: 3px solid #667eea;
+            border-radius: 15px;
+            padding: 15px;
+            width: 100%;
+            display: none;
+        }
+
+        .timer-input.active {
+            display: block;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-start {
+            background-color: #667eea;
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-start:hover {
+            background-color: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-start:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-add {
+            background-color: #4CAF50;
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            padding: 0;
+            font-size: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-add:hover {
+            background-color: #45a049;
+            transform: scale(1.1);
+        }
+
+        .teams-section {
+            background: #f9f9f9;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .teams-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .team-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .team-item.stopped {
+            border-left: 5px solid #667eea;
+        }
+
+        .team-rank {
+            background: #667eea;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            min-width: 40px;
+        }
+
+        .team-rank.gold {
+            background: #FFD700;
+            color: #333;
+        }
+
+        .team-rank.silver {
+            background: #C0C0C0;
+            color: #333;
+        }
+
+        .team-rank.bronze {
+            background: #CD7F32;
+            color: white;
+        }
+
+        .team-info {
+            flex: 1;
+        }
+
+        .team-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .team-name:hover {
+            background-color: #e8e8e8;
+        }
+
+        .team-name-input {
+            font-size: 16px;
+            font-weight: bold;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 5px 10px;
+            width: 150px;
+            display: none;
+        }
+
+        .team-name-input.active {
+            display: inline-block;
+        }
+
+        .team-time {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            min-width: 120px;
+            text-align: right;
+        }
+
+        .btn-end {
+            background-color: #FF6B6B;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-end:hover {
+            background-color: #ee5a52;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-end:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-delete {
+            background-color: #f44336;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            background-color: #da190b;
+        }
+
+        .results-section {
+            background: #f9f9f9;
+            border-radius: 15px;
+            padding: 20px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .ranking-item {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .ranking-medal {
+            font-size: 30px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .ranking-info {
+            flex: 1;
+        }
+
+        .ranking-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .ranking-time {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-text {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            .main-timer {
+                font-size: 50px;
+            }
+
+            .timer-input {
+                font-size: 40px;
+            }
+
+            button {
+                padding: 12px 30px;
+                font-size: 16px;
+            }
+
+            .team-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .team-time {
+                width: 100%;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="timer-display">
+            <div class="main-timer" id="mainTimer" title="คลิกเพื่อแก้ไขเวลา">00:00:00</div>
+            <input type="text" class="timer-input" id="timerInput" placeholder="HH:MM:SS">
+        </div>
+
+        <div class="button-group">
+            <button class="btn-start" id="startBtn">START</button>
+            <button class="btn-add" id="addTeamBtn" title="เพิ่มทีม">+</button>
+        </div>
+
+        <div class="teams-section">
+            <div class="teams-header">
+                ทีม
+                <span id="teamCount">0</span>
+            </div>
+            <div id="teamsList"></div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="results-title">🏆 อันดับ</div>
+            <div id="rankingList"></div>
+            <button class="btn-start" style="margin-top: 15px; width: 100%;" onclick="location.reload()">เริ่มใหม่</button>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let remainingTime = 60000; // Default 1 minute
+        let totalTime = 60000;
+        let timerInterval = null;
+        let teams = [];
+        let isStopped = false;
+
+        const mainTimer = document.getElementById('mainTimer');
+        const timerInput = document.getElementById('timerInput');
+        const startBtn = document.getElementById('startBtn');
+        const addTeamBtn = document.getElementById('addTeamBtn');
+        const teamsList = document.getElementById('teamsList');
+        const teamCount = document.getElementById('teamCount');
+        const resultsSection = document.getElementById('resultsSection');
+        const rankingList = document.getElementById('rankingList');
+
+        // Initialize
+        initializeTeams();
+        updateMainTimer();
+
+        function initializeTeams() {
+            teams = [
+                { id: 1, name: 'ทีม 1', time: null },
+                { id: 2, name: 'ทีม 2', time: null },
+                { id: 3, name: 'ทีม 3', time: null }
+            ];
+            renderTeams();
+        }
+
+        function renderTeams() {
+            teamsList.innerHTML = '';
+            teamCount.textContent = teams.length;
+
+            teams.forEach((team, index) => {
+                const teamDiv = document.createElement('div');
+                teamDiv.className = 'team-item' + (team.time !== null ? ' stopped' : '');
+                teamDiv.innerHTML = `
+                    <div class="team-rank">${index + 1}</div>
+                    <div class="team-info">
+                        <div class="team-name" onclick="editTeamName(${team.id})">
+                            ${team.name}
+                        </div>
+                        <input type="text" class="team-name-input" id="input-${team.id}" value="${team.name}" onblur="saveTeamName(${team.id})" onkeypress="handleNameKeypress(event, ${team.id})">
+                    </div>
+                    <div class="team-time" id="time-${team.id}">${team.time !== null ? formatTime(team.time) : '00:00:00'}</div>
+                    <button class="btn-end" id="btn-${team.id}" onclick="endTeam(${team.id})" ${team.time !== null || !isRunning ? 'disabled' : ''}>
+                        END
+                    </button>
+                `;
+                teamsList.appendChild(teamDiv);
+            });
+        }
+
+        function formatTime(time) {
+            const totalMs = Math.max(0, time);
+            const hours = String(Math.floor(totalMs / 3600000)).padStart(2, '0');
+            const minutes = String(Math.floor((totalMs % 3600000) / 60000)).padStart(2, '0');
+            const seconds = String(Math.floor((totalMs % 60000) / 1000)).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function updateMainTimer() {
+            mainTimer.textContent = formatTime(remainingTime);
+        }
+
+        mainTimer.addEventListener('click', () => {
+            if (!isRunning) {
+                mainTimer.style.display = 'none';
+                timerInput.classList.add('active');
+                timerInput.value = formatTime(totalTime);
+                timerInput.focus();
+                timerInput.select();
+            }
+        });
+
+        timerInput.addEventListener('blur', () => {
+            saveTimerInput();
+        });
+
+        timerInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                saveTimerInput();
+            }
+        });
+
+        function saveTimerInput() {
+            const value = timerInput.value.trim();
+            if (value) {
+                const parts = value.split(':').map(x => parseInt(x) || 0);
+                const hours = Math.min(Math.max(parts[0] || 0, 0), 23);
+                const minutes = Math.min(Math.max(parts[1] || 0, 0), 59);
+                const seconds = Math.min(Math.max(parts[2] || 0, 0), 59);
+                totalTime = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
+                remainingTime = totalTime;
+            }
+            timerInput.classList.remove('active');
+            mainTimer.style.display = 'block';
+            updateMainTimer();
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (teams.every(t => t.time !== null)) {
+                // All teams finished
+                showResults();
+                return;
+            }
+
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.textContent = 'STOP';
+                addTeamBtn.disabled = true;
+                mainTimer.style.cursor = 'default';
+                renderTeams();
+
+                timerInterval = setInterval(() => {
+                    remainingTime -= 100;
+                    if (remainingTime <= 0) {
+                        remainingTime = 0;
+                        clearInterval(timerInterval);
+                        isRunning = false;
+                        startBtn.textContent = 'START';
+                        updateMainTimer();
+                        renderTeams();
+                        return;
+                    }
+                    updateMainTimer();
+                }, 100);
+            } else {
+                isRunning = false;
+                startBtn.textContent = 'START';
+                clearInterval(timerInterval);
+                isStopped = true;
+                renderTeams();
+            }
+        });
+
+        addTeamBtn.addEventListener('click', () => {
+            if (!isRunning) {
+                const newId = Math.max(...teams.map(t => t.id), 0) + 1;
+                teams.push({ id: newId, name: `ทีม ${teams.length + 1}`, time: null });
+                renderTeams();
+            }
+        });
+
+        function editTeamName(id) {
+            if (!isRunning) {
+                const nameEl = document.querySelector(`#input-${id}`);
+                nameEl.classList.add('active');
+                nameEl.focus();
+                nameEl.select();
+            }
+        }
+
+        function handleNameKeypress(e, id) {
+            if (e.key === 'Enter') {
+                saveTeamName(id);
+            }
+        }
+
+        function saveTeamName(id) {
+            const input = document.getElementById(`input-${id}`);
+            const team = teams.find(t => t.id === id);
+            if (team && input.value.trim()) {
+                team.name = input.value.trim();
+            }
+            input.classList.remove('active');
+            renderTeams();
+        }
+
+        function endTeam(id) {
+            const team = teams.find(t => t.id === id);
+            if (team && team.time === null) {
+                team.time = remainingTime;
+                renderTeams();
+            }
+        }
+
+        function showResults() {
+            isRunning = false;
+            clearInterval(timerInterval);
+            startBtn.textContent = 'START';
+            startBtn.disabled = true;
+
+            // Sort teams by time (most time remaining = fastest)
+            const sorted = [...teams]
+                .filter(t => t.time !== null)
+                .sort((a, b) => b.time - a.time);
+
+            rankingList.innerHTML = '';
+            const medals = ['🥇', '🥈', '🥉'];
+
+            sorted.forEach((team, index) => {
+                const medal = medals[index] || '🏅';
+                const rankingDiv = document.createElement('div');
+                rankingDiv.className = 'ranking-item';
+                rankingDiv.innerHTML = `
+                    <div class="ranking-medal">${medal}</div>
+                    <div class="ranking-info">
+                        <div class="ranking-name">${team.name}</div>
+                        <div class="ranking-time">${formatTime(team.time)}</div>
+                    </div>
+                `;
+                rankingList.appendChild(rankingDiv);
+            });
+
+            resultsSection.classList.add('show');
+        }
+    </script>
+</body>
+</html>
