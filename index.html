@@ -87,14 +87,18 @@
   ::selection{ background:var(--clock); color:#fff; }
 
   .wrap{
-    max-width:1400px;
+    max-width:1440px;
     min-height:100vh;
     margin:0 auto;
-    padding:clamp(6px,1vh,14px) clamp(18px,3vw,32px) clamp(5px,0.6vh,8px);
+    padding:clamp(10px,1.4vh,18px) clamp(18px,3vw,32px) clamp(12px,2vh,20px);
     display:grid;
-    grid-template-columns:1fr;
-    grid-template-rows:auto auto auto auto auto;
-    gap:clamp(10px,1.5vh,18px);
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:
+      "top"
+      "countdown"
+      "teams"
+      "results";
+    gap:clamp(12px,1.8vh,22px);
   }
 
   header.top{
@@ -209,7 +213,7 @@
   .section-block:nth-of-type(2){ animation-delay:.05s; }
   .section-block:nth-of-type(3){ animation-delay:.1s; }
 
-  .section-head{ margin-bottom:clamp(2px,0.5vh,8px); flex:none; }
+  .section-head{ margin-bottom:clamp(2px,0.5vh,8px); flex:none; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .section-title{
     margin:0 0 2px;
     font-size:clamp(11px,1.4vh,14px);
@@ -229,8 +233,10 @@
     to{ opacity:1; transform:translateY(0); }
   }
 
-  .lanes{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; flex:1; min-height:0; }
-  .results-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:18px; flex:1; min-height:0; }
+  .lanes{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; flex:1; min-height:0; align-items:stretch; }
+  .results-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:18px; flex:1; min-height:0; align-items:stretch; }
+  .section-actions{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .add-team-btn{ border-color:var(--clock); color:var(--clock); }
 
   @media (max-width: 640px){
     header.top{ flex-direction:column; align-items:stretch; }
@@ -349,8 +355,30 @@
 
 
   .clock-wrap{ display:flex; justify-content:center; }
-  .clock-card{ width:100%; max-width:640px; }
-  .clock-card .digits{ font-size:clamp(28px, 4.6vh, 64px); padding:2px 0; }
+  .clock-card{ width:min(100%, 980px); padding:clamp(18px,3vh,34px) clamp(20px,3vw,36px); }
+  .clock-card .digits{ font-size:clamp(40px, 8vh, 120px); padding:clamp(8px,1.4vh,14px) 0; letter-spacing:2px; }
+  /* Larger primary controls inside the clock card */
+  .clock-card .btn-row-primary{ gap:12px; grid-template-columns:repeat(2, minmax(0, 1fr)); margin-top:6px; }
+  .clock-card .btn-row-primary button{
+    padding:clamp(12px,2.4vh,20px) clamp(18px,2.6vw,26px);
+    font-size:clamp(16px,2.6vh,22px);
+    font-weight:900;
+    border-radius:calc(var(--radius-md) + 6px);
+    min-height:48px;
+  }
+  .clock-card .lane-head{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .clock-card .track{ width:100%; margin:8px 0 12px; }
+  .clock-card .set-row{ width:100%; grid-template-columns:repeat(3, minmax(80px, 1fr)); gap:12px; margin-top:6px; }
+  .clock-card .set-field input{ border-radius:999px; padding:12px 10px; font-size:16px; background:var(--panel-2); }
+  .clock-card .set-field label{ font-size:12px; color:var(--muted); margin-bottom:6px; display:block; }
+  .clock-card .set-field{ cursor:text; }
+  .clock-card .set-field input{ -moz-appearance: textfield; appearance: textfield; border:1px solid transparent; }
+  .clock-card .set-field input:focus{ outline:2px solid color-mix(in srgb, var(--clock) 30%, transparent); background:color-mix(in srgb, var(--panel-2) 80%, var(--clock) 5%); }
+  .clock-card .set-field input::-webkit-outer-spin-button, .clock-card .set-field input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .clock-card .btn-row-primary button.btn-start{ background:linear-gradient(135deg,var(--clock),#3D6FE0); color:#fff; border-color:transparent; }
+  .clock-card .btn-row-primary button.btn-pause{ background:transparent; border-color:color-mix(in srgb, var(--line) 60%, var(--text) 10%); }
+  .clock-card .btn-row-secondary.single{ margin-top:6px; }
+  .clock-card .meta-note{ margin-top:10px; font-size:13px; color:var(--muted); text-align:center; }
   .clock-card .lane-num{ font-size:clamp(13px,1.8vh,17px); }
 
   .result-card{
@@ -392,21 +420,18 @@
     .clock-card .digits{ font-size:clamp(26px, 8vh, 52px); }
   }
 
+  @media (max-width: 640px){
+    /* scale down the huge clock on small screens to avoid overflow */
+    .clock-card{ width:100%; padding:clamp(12px,2vh,18px); }
+    .clock-card .digits{ font-size:clamp(26px, 7vh, 54px); }
+    .clock-card .btn-row-primary button{ font-size:clamp(14px,2vh,18px); padding:clamp(8px,1.6vh,14px) 12px; }
+  }
+
   @media (min-width: 900px){
-    .wrap{
-      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-      grid-template-areas:
-        "top top"
-        "countdown countdown"
-        "teams results"
-        "footer footer";
-      align-items:start;
-    }
     header.top{ grid-area:top; }
     #panel-countdown{ grid-area:countdown; }
     #panel-teams{ grid-area:teams; }
     #panel-results{ grid-area:results; }
-    footer.note{ grid-area:footer; }
     .global-controls{ justify-content:flex-end; }
   }
 </style>
@@ -438,18 +463,28 @@
 
   <section class="section-block" id="panel-teams">
     <div class="section-head">
-      <h2 class="section-title">ทีม</h2>
-      <p class="section-hint">แต่ละทีมทำงานเป็นนาฬิกาจับเวลาอิสระ กดปุ่ม "เสร็จสิ้น" เมื่อทีมทำภารกิจเสร็จเพื่อบันทึกเวลา</p>
+      <div>
+        <h2 class="section-title">ทีม</h2>
+        <p class="section-hint">แต่ละทีมทำงานเป็นนาฬิกาจับเวลาอิสระ กดปุ่ม "เสร็จสิ้น" เมื่อทีมทำภารกิจเสร็จเพื่อบันทึกเวลา</p>
+      </div>
+      <div class="section-actions">
+        <button class="btn-ghost add-team-btn" id="addTeamBtn" type="button">➕ เพิ่มทีม</button>
+      </div>
     </div>
     <div class="lanes" id="lanes"></div>
   </section>
 
   <section class="section-block" id="panel-results">
     <div class="section-head">
-      <h2 class="section-title">ผลลัพธ์</h2>
-      <p class="section-hint">เมื่อทีมใดทีมหนึ่งกดปุ่ม "เสร็จสิ้น" จะปรากฏผลลัพธ์ของแต่ละทีมในตารางด้านล่าง</p>
+      <div>
+        <h2 class="section-title">ผลลัพธ์</h2>
+        <p class="section-hint">เมื่อทีมใดทีมหนึ่งกดปุ่ม "เสร็จสิ้น" จะปรากฏผลลัพธ์ของแต่ละทีมในตารางด้านล่าง</p>
+      </div>
+    </div>
     <div class="results-grid" id="resultsGrid"></div>
   </section>
+
+  <footer class="note">ระบบจะอัปเดตสถานะและผลลัพธ์ให้ตรงกับเวลาจริงแบบเรียลไทม์</footer>
 </div>
 
 <script>
@@ -459,6 +494,10 @@
   const TEAM_COLORS = ['var(--t1)', 'var(--t2)', 'var(--t3)'];
   const CLOCK_COLOR = 'var(--clock)';
   const DEFAULT_CLOCK_SECONDS = 10 * 60;
+
+  function getTeamColor(index){
+    return TEAM_COLORS[index % TEAM_COLORS.length];
+  }
 
   const STATUS_TH = { idle:'ยังไม่เริ่ม', running:'กำลังทำงาน', paused:'หยุดชั่วคราว', finished:'เสร็จสิ้น' };
 
@@ -532,7 +571,7 @@
     constructor(index, root){
       this.index = index;
       this.root = root;
-      this.color = TEAM_COLORS[index];
+      this.color = getTeamColor(index);
       this.name = 'ทีม ' + (index+1);
       this.elapsed = 0;
       this.startedAt = null;
@@ -540,6 +579,7 @@
       this.state = 'idle';
       this.rafId = null;
 
+      this.root.style.setProperty('--accent', this.color);
       this.cacheEls();
       this.bindEvents();
       this.update();
@@ -682,6 +722,13 @@
             this.remaining = this.totalSeconds;
             this.update();
             renderResults();
+          }
+        });
+        inp.addEventListener('keydown', (ev)=>{
+          if(ev.key === 'Enter'){
+            // pressing Enter will blur the field, firing the change handler
+            ev.preventDefault();
+            inp.blur();
           }
         });
       });
@@ -841,17 +888,38 @@
   const lanesEl = document.getElementById('lanes');
   const clockWrapEl = document.getElementById('clockWrap');
   const resultsGridEl = document.getElementById('resultsGrid');
+  const addTeamBtn = document.getElementById('addTeamBtn');
   const allTeams = [];
 
   for(let i=0;i<3;i++){
-    lanesEl.insertAdjacentHTML('beforeend', teamLaneTemplate(i));
+    const temp = document.createElement('div');
+    temp.innerHTML = teamLaneTemplate(i);
+    const lane = temp.firstElementChild;
+    lanesEl.appendChild(lane);
+    allTeams.push(new TeamStopwatch(i, lane));
   }
-  Array.from(lanesEl.querySelectorAll('.lane')).forEach((root, i)=>{
-    allTeams.push(new TeamStopwatch(i, root));
-  });
 
   clockWrapEl.insertAdjacentHTML('beforeend', clockTemplate());
   const clock = new CountdownClock(clockWrapEl.querySelector('.lane'));
+
+  // Make clicking the pill (set-field) focus its input for direct editing
+  (function enableClickToEdit(){
+    const setFields = clockWrapEl.querySelectorAll('.set-field');
+    setFields.forEach(field=>{
+      field.addEventListener('click', (e)=>{
+        const inp = field.querySelector('input');
+        if(!inp) return;
+        inp.focus();
+        // select value for easy overwrite
+        try{ inp.select(); }catch(err){}
+      });
+    });
+    // clicking the big digits focuses the minutes input
+    const bigDigits = clockWrapEl.querySelector('.digits');
+    if(bigDigits){ bigDigits.style.cursor = 'text'; bigDigits.addEventListener('click', ()=>{
+      const m = clockWrapEl.querySelector('.set-m'); if(m){ m.focus(); try{ m.select(); }catch(e){} }
+    }); }
+  })();
 
   const MEDALS = ['🥇','🥈','🥉'];
 
@@ -908,6 +976,16 @@
   document.getElementById('muteBtn').addEventListener('click', function(){
     soundOn = !soundOn;
     this.textContent = soundOn ? '🔔 เปิดเสียง' : '🔕 ปิดเสียง';
+  });
+
+  addTeamBtn.addEventListener('click', ()=>{
+    const index = allTeams.length;
+    const temp = document.createElement('div');
+    temp.innerHTML = teamLaneTemplate(index);
+    const lane = temp.firstElementChild;
+    lanesEl.appendChild(lane);
+    allTeams.push(new TeamStopwatch(index, lane));
+    renderResults();
   });
 
   document.getElementById('resetAllBtn').addEventListener('click', ()=>{
