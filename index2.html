@@ -164,6 +164,15 @@
 
   .btn-ghost{ background:transparent; }
 
+  .volume-control{
+    display:flex; align-items:center; gap:8px;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:999px; padding:6px 10px;
+    min-height:36px;
+  }
+  .volume-control input[type="range"]{ width:90px; accent-color:var(--clock); }
+  .volume-control span{ color:var(--muted); font-size:12px; min-width:34px; }
+
   .btn-start-all{
     border-color:transparent;
     background:linear-gradient(135deg, var(--success), #16A34A);
@@ -447,6 +456,11 @@
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="สลับธีมสว่างและมืด">
         <span class="thumb"></span>
       </button>
+      <div class="volume-control">
+        <label for="volumeRange" aria-label="ระดับเสียง">🔊</label>
+        <input type="range" id="volumeRange" min="0" max="100" value="80">
+        <span id="volumeValue">80%</span>
+      </div>
       <button class="btn-ghost" id="muteBtn" type="button">🔔 เปิดเสียง</button>
       <button class="btn-ghost" id="resetAllBtn" type="button">รีเซ็ตทั้งหมด</button>
       <button class="btn-start-all" id="startAllBtn" type="button">⏱ เริ่มพร้อมกันทั้งหมด</button>
@@ -503,6 +517,7 @@
 
   let soundOn = true;
   let audioCtx = null;
+  let soundVolume = 0.8;
 
   function ensureAudio(){
     if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -521,7 +536,7 @@
         osc.type = 'square';
         osc.frequency.setValueAtTime(880, now + offset);
         gain.gain.setValueAtTime(0, now + offset);
-        gain.gain.linearRampToValueAtTime(0.18, now + offset + 0.02);
+        gain.gain.linearRampToValueAtTime(0.18 * soundVolume, now + offset + 0.02);
         gain.gain.linearRampToValueAtTime(0, now + offset + 0.28);
         osc.connect(gain).connect(ctx.destination);
         osc.start(now + offset);
@@ -540,7 +555,7 @@
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1046, now);
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+      gain.gain.linearRampToValueAtTime(0.15 * soundVolume, now + 0.02);
       gain.gain.linearRampToValueAtTime(0, now + 0.4);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now);
@@ -972,6 +987,32 @@
 
   renderResults();
   setInterval(renderResults, 200);
+
+  const volumeRangeEl = document.getElementById('volumeRange');
+  const volumeValueEl = document.getElementById('volumeValue');
+
+  function loadVolumeSetting(){
+    try{
+      const saved = parseFloat(localStorage.getItem('countdownArenaVolume'));
+      if(!Number.isNaN(saved) && saved >= 0 && saved <= 1){ soundVolume = saved; }
+    }catch(e){}
+  }
+
+  function applyVolumeUI(){
+    if(volumeRangeEl){ volumeRangeEl.value = Math.round(soundVolume * 100); }
+    if(volumeValueEl){ volumeValueEl.textContent = `${Math.round(soundVolume * 100)}%`; }
+  }
+
+  function setVolume(value){
+    soundVolume = Math.max(0, Math.min(1, value / 100));
+    try{ localStorage.setItem('countdownArenaVolume', soundVolume.toString()); }catch(e){}
+    applyVolumeUI();
+  }
+
+  loadVolumeSetting();
+  applyVolumeUI();
+
+  if(volumeRangeEl){ volumeRangeEl.addEventListener('input', (e)=> setVolume(parseInt(e.target.value, 10) || 0)); }
 
   document.getElementById('muteBtn').addEventListener('click', function(){
     soundOn = !soundOn;

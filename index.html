@@ -27,6 +27,16 @@
             padding: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(102,126,234,0.03), transparent 45%, rgba(118,75,162,0.04));
+            pointer-events: none;
         }
 
         .timer-display {
@@ -125,6 +135,50 @@
         .btn-add:hover {
             background-color: #45a049;
             transform: scale(1.1);
+        }
+
+        .sound-controls {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: #555;
+            font-size: 13px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(245,247,255,0.95));
+            border: 1px solid rgba(102, 126, 234, 0.18);
+            border-radius: 999px;
+            padding: 8px 12px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.14);
+            z-index: 2;
+            backdrop-filter: blur(6px);
+        }
+
+        .sound-controls label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: 14px;
+        }
+
+        .sound-controls input[type="range"] {
+            width: 110px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        .sound-controls span {
+            min-width: 40px;
+            text-align: right;
+            font-weight: 700;
+            color: #667eea;
         }
 
         .teams-section {
@@ -271,6 +325,12 @@
             background-color: #da190b;
         }
 
+        .team-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .results-section {
             background: #f9f9f9;
             border-radius: 15px;
@@ -362,6 +422,12 @@
 </head>
 <body>
     <div class="container">
+        <div class="sound-controls">
+            <label for="volumeRange">🔊</label>
+            <input type="range" id="volumeRange" min="0" max="100" value="80">
+            <span id="volumeValue">80%</span>
+        </div>
+
         <div class="timer-display">
             <div class="main-timer" id="mainTimer" title="คลิกเพื่อแก้ไขเวลา">00:00:00</div>
             <input type="text" class="timer-input" id="timerInput" placeholder="HH:MM:SS">
@@ -397,6 +463,7 @@
         let lastAlertSecond = null;
         let warningPlayed = false;
         let audioCtx = null;
+        let masterVolume = 0.8;
 
         const mainTimer = document.getElementById('mainTimer');
         const timerInput = document.getElementById('timerInput');
@@ -406,6 +473,41 @@
         const teamCount = document.getElementById('teamCount');
         const resultsSection = document.getElementById('resultsSection');
         const rankingList = document.getElementById('rankingList');
+        const volumeRange = document.getElementById('volumeRange');
+        const volumeValue = document.getElementById('volumeValue');
+
+        function loadVolumeSetting() {
+            try {
+                const saved = parseFloat(localStorage.getItem('timerVolume'));
+                if (!Number.isNaN(saved) && saved >= 0 && saved <= 1) {
+                    masterVolume = saved;
+                }
+            } catch (e) {}
+        }
+
+        function applyVolumeUI() {
+            if (volumeRange) {
+                volumeRange.value = Math.round(masterVolume * 100);
+            }
+            if (volumeValue) {
+                volumeValue.textContent = `${Math.round(masterVolume * 100)}%`;
+            }
+        }
+
+        function setVolume(value) {
+            masterVolume = Math.max(0, Math.min(1, value / 100));
+            try {
+                localStorage.setItem('timerVolume', masterVolume.toString());
+            } catch (e) {}
+            applyVolumeUI();
+        }
+
+        loadVolumeSetting();
+        applyVolumeUI();
+
+        volumeRange.addEventListener('input', (e) => {
+            setVolume(parseInt(e.target.value, 10) || 0);
+        });
 
         // Initialize
         initializeTeams();
@@ -436,9 +538,12 @@
                         <input type="text" class="team-name-input" id="input-${team.id}" value="${team.name}" onblur="saveTeamName(${team.id})" onkeypress="handleNameKeypress(event, ${team.id})">
                     </div>
                     <div class="team-time" id="time-${team.id}">${team.time !== null ? formatTime(team.time) : '00:00:00'}</div>
-                    <button class="btn-end" id="btn-${team.id}" onclick="endTeam(${team.id})" ${team.time !== null || !isRunning ? 'disabled' : ''}>
-                        END
-                    </button>
+                    <div class="team-actions">
+                        <button class="btn-delete" onclick="deleteTeam(${team.id})" title="ลบทีม">ลบ</button>
+                        <button class="btn-end" id="btn-${team.id}" onclick="endTeam(${team.id})" ${team.time !== null || !isRunning ? 'disabled' : ''}>
+                            END
+                        </button>
+                    </div>
                 `;
                 teamsList.appendChild(teamDiv);
             });
@@ -507,7 +612,7 @@
             const gain = ctx.createGain();
             oscillator.type = type;
             oscillator.frequency.value = frequency;
-            gain.gain.value = volume;
+            gain.gain.value = Math.max(0, Math.min(1, volume * masterVolume));
             oscillator.connect(gain);
             gain.connect(ctx.destination);
             oscillator.start();
@@ -631,6 +736,13 @@
             const team = teams.find(t => t.id === id);
             if (team && team.time === null) {
                 team.time = remainingTime;
+                renderTeams();
+            }
+        }
+
+        function deleteTeam(id) {
+            if (!isRunning && teams.length > 1) {
+                teams = teams.filter(team => team.id !== id);
                 renderTeams();
             }
         }
