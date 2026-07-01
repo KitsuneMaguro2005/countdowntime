@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>จับเวลาแข่งขัน</title>
+<script>
+  (function(){
+    try{
+      var saved = localStorage.getItem('countdownArenaTheme');
+      var theme = saved === 'light' || saved === 'dark'
+        ? saved
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.setAttribute('data-theme', theme);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
+<style>
+  :root{
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+    --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Leelawadee UI', 'Noto Sans Thai', 'Tahoma', Roboto, Helvetica, Arial, sans-serif;
+    --ease: cubic-bezier(.4,0,.2,1);
+    --t1:#FF6B35; --t1-soft:rgba(255,107,53,.14);
+    --t2:#22C7B5; --t2-soft:rgba(34,199,181,.14);
+    --t3:#A76CF2; --t3-soft:rgba(167,108,242,.14);
+    --clock:#5B8CFF; --clock-soft:rgba(91,140,255,.14);
+  }
+
+  [data-theme="dark"]{
+    --bg:#0A0D13;
+    --bg-radial-1: rgba(91,140,255,.10);
+    --bg-radial-2: rgba(167,108,242,.08);
+    --panel:#12151D;
+    --panel-2:#1A1F2A;
+    --panel-3:#212734;
+    --line:#242B38;
+    --text:#F5F7FA;
+    --muted:#8B93A7;
+    --danger:#FF6B6B;
+    --success:#4ADE80;
+    --gold:#FFC24B;
+    --shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 16px 40px -24px rgba(0,0,0,.7);
+    --overlay-hover: rgba(255,255,255,.04);
+  }
+
+  [data-theme="light"]{
+    --bg:#F4F5F8;
+    --bg-radial-1: rgba(91,140,255,.08);
+    --bg-radial-2: rgba(167,108,242,.06);
+    --panel:#FFFFFF;
+    --panel-2:#F3F4F8;
+    --panel-3:#EAECF2;
+    --line:#E4E7EE;
+    --text:#171A21;
+    --muted:#6B7280;
+    --danger:#E0473F;
+    --success:#16A34A;
+    --gold:#B9770E;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 16px 32px -20px rgba(15,23,42,.16);
+    --overlay-hover: rgba(15,23,42,.035);
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html{ color-scheme:light dark; }
+
+  html, body{ min-height:100%; }
+
+  body{
+    margin:0; padding:0;
+    background:
+      radial-gradient(circle at 12% -8%, var(--bg-radial-1) 0%, transparent 42%),
+      radial-gradient(circle at 92% 6%, var(--bg-radial-2) 0%, transparent 38%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    transition:background-color .3s var(--ease), color .3s var(--ease);
+    overflow:auto;
+  }
+
+  ::selection{ background:var(--clock); color:#fff; }
+
+  .wrap{
+    max-width:1400px;
+    min-height:100vh;
+    margin:0 auto;
+    padding:clamp(6px,1vh,14px) clamp(18px,3vw,32px) clamp(5px,0.6vh,8px);
+    display:grid;
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto auto auto auto;
+    gap:clamp(10px,1.5vh,18px);
+  }
+
+  header.top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    flex-wrap:wrap;
+    flex:none;
+    margin-bottom:0;
+    padding-bottom:clamp(6px,0.9vh,11px);
+    border-bottom:1px solid var(--line);
+  }
+
+  .brand-eyebrow{
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-size:clamp(10px,1.3vh,13px);
+    color:var(--muted);
+    margin:0 0 clamp(2px,0.5vh,6px);
+    font-weight:700;
+  }
+
+  h1{
+    margin:0;
+    font-size:clamp(20px, 3.4vh, 40px);
+    font-weight:800;
+    letter-spacing:-0.01em;
+  }
+  h1 span{
+    background:linear-gradient(90deg,var(--t1),var(--t2) 50%,var(--t3));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .global-controls{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+    max-width:100%;
+  }
+
+  button{
+    font-family:var(--sans);
+    cursor:pointer;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--text);
+    border-radius:var(--radius-sm);
+    padding:clamp(7px,1.4vh,13px) clamp(12px,1.4vw,18px);
+    font-size:clamp(12px,1.5vh,15px);
+    font-weight:600;
+    transition:transform .15s var(--ease), border-color .15s var(--ease), background-color .15s var(--ease), box-shadow .15s var(--ease), opacity .15s var(--ease), color .15s var(--ease);
+    white-space:normal;
+    line-height:1.3;
+  }
+  button:hover:not(:disabled){ border-color:color-mix(in srgb, var(--line) 40%, var(--text) 20%); background:var(--overlay-hover); transform:translateY(-1px); }
+  button:active:not(:disabled){ transform:translateY(0) scale(.97); }
+  button:disabled{ opacity:.35; cursor:not-allowed; transform:none; }
+  button:focus-visible{ outline:2px solid var(--clock); outline-offset:2px; }
+
+  .btn-ghost{ background:transparent; }
+
+  .btn-start-all{
+    border-color:transparent;
+    background:linear-gradient(135deg, var(--success), #16A34A);
+    color:#04140A;
+    font-weight:800;
+    box-shadow:0 10px 24px -12px rgba(74,222,128,.55);
+  }
+  [data-theme="light"] .btn-start-all{ color:#052e12; box-shadow:0 10px 20px -12px rgba(22,163,74,.4); }
+  .btn-start-all:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 14px 28px -12px rgba(74,222,128,.6); background:linear-gradient(135deg, var(--success), #15803D); }
+
+  .theme-toggle{
+    width:56px; height:30px;
+    border-radius:99px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    position:relative;
+    padding:0;
+    display:flex;
+    align-items:center;
+    flex:none;
+  }
+  .theme-toggle .thumb{
+    width:26px; height:26px;
+    border-radius:50%;
+    background:linear-gradient(135deg,var(--clock),#3D6FE0);
+    position:absolute;
+    top:2px; left:2px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px;
+    transition:transform .3s var(--ease), background .3s var(--ease);
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  .theme-toggle .thumb::before{ content:'🌙'; }
+  [data-theme="light"] .theme-toggle .thumb{ transform:translateX(26px); background:linear-gradient(135deg,#FFC24B,#FF9F1C); }
+  [data-theme="light"] .theme-toggle .thumb::before{ content:'☀️'; }
+
+  .section-block{
+    margin-bottom:0;
+    animation:fadeUp .5s var(--ease) both;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  #panel-countdown{ flex:0 1 auto; }
+  #panel-teams{ flex:1.35; min-height:0; }
+  #panel-results{ flex:1.3; min-height:0; }
+  .section-block:nth-of-type(2){ animation-delay:.05s; }
+  .section-block:nth-of-type(3){ animation-delay:.1s; }
+
+  .section-head{ margin-bottom:clamp(2px,0.5vh,8px); flex:none; }
+  .section-title{
+    margin:0 0 2px;
+    font-size:clamp(11px,1.4vh,14px);
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--muted);
+    font-weight:800;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .section-hint{ color:var(--muted); font-size:clamp(10px,1.3vh,13px); margin:0; line-height:1.3; }
+
+  @keyframes fadeUp{
+    from{ opacity:0; transform:translateY(10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .lanes{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; flex:1; min-height:0; }
+  .results-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:18px; flex:1; min-height:0; }
+
+  @media (max-width: 640px){
+    header.top{ flex-direction:column; align-items:stretch; }
+    .global-controls{ justify-content:space-between; }
+    .global-controls button:not(.theme-toggle){ flex:1 1 auto; }
+    .set-row{ grid-template-columns:1fr; }
+    .btn-row-primary, .btn-row-secondary{ grid-template-columns:1fr; }
+  }
+
+  .lane{
+    position:relative;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:clamp(8px,1.6vh,18px) clamp(14px,1.8vw,24px);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    gap:clamp(4px,0.9vh,8px);
+    box-shadow:var(--shadow);
+    transition:border-color .25s var(--ease), box-shadow .25s var(--ease), background-color .3s var(--ease);
+    min-width:0;
+    min-height:0;
+  }
+  .lane::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:4px;
+    background:var(--accent);
+  }
+  .lane[data-team="0"]{ --accent:var(--t1); }
+  .lane[data-team="1"]{ --accent:var(--t2); }
+  .lane[data-team="2"]{ --accent:var(--t3); }
+  .lane.clock{ --accent:var(--clock); }
+
+  .lane.finished{
+    border-color:var(--accent);
+    box-shadow:var(--shadow), 0 0 0 1px var(--accent), 0 0 32px -12px var(--accent);
+    animation:finishPop .45s var(--ease);
+  }
+  @keyframes finishPop{
+    0%{ transform:scale(1); }
+    35%{ transform:scale(1.015); }
+    100%{ transform:scale(1); }
+  }
+
+  .lane-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+
+  .lane-num{
+    width:clamp(24px,3.6vh,34px); height:clamp(24px,3.6vh,34px); border-radius:10px;
+    background:var(--accent); color:#0B0E14;
+    font-weight:800; font-size:clamp(12px,1.6vh,15px);
+    display:flex; align-items:center; justify-content:center; flex:none;
+  }
+
+  .team-name{
+    flex:1; background:transparent; border:none; color:var(--text);
+    font-size:clamp(14px,2vh,19px); font-weight:700; padding:4px 8px; border-radius:8px; min-width:60px;
+    transition:background-color .15s var(--ease);
+  }
+  .team-name:hover, .team-name:focus{ background:var(--panel-2); outline:1px solid var(--line); }
+  .team-name:focus-visible{ outline:2px solid var(--accent); }
+
+  .status-pill{
+    font-size:clamp(10px,1.3vh,12px); font-weight:700; letter-spacing:.04em;
+    padding:clamp(4px,0.8vh,6px) clamp(8px,1.2vh,12px); border-radius:99px; background:var(--panel-2); color:var(--muted);
+    white-space:nowrap; flex:none; transition:color .2s var(--ease), background-color .2s var(--ease);
+  }
+  .status-pill.running{ color:var(--success); background:color-mix(in srgb, var(--success) 14%, var(--panel-2)); }
+  .status-pill.paused{ color:var(--gold); background:color-mix(in srgb, var(--gold) 14%, var(--panel-2)); }
+  .status-pill.finished{ color:var(--accent); background:color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
+
+  .digits{
+    font-family:var(--mono); font-variant-numeric:tabular-nums; text-align:center;
+    font-size:clamp(22px, 5.2vh, 52px); font-weight:700; letter-spacing:1px; padding:2px 0; color:var(--text);
+    transition:color .2s var(--ease);
+    word-break:keep-all;
+  }
+  .digits.tick{ color:var(--accent); }
+  .digits.danger{ color:var(--danger); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+
+  .track{ height:clamp(5px,0.8vh,7px); border-radius:99px; background:var(--panel-2); overflow:hidden; border:1px solid var(--line); }
+  .track-fill{ height:100%; width:100%; background:var(--accent); border-radius:99px; transition:width .25s linear; }
+
+  .set-row{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:clamp(5px,0.9vh,8px); }
+  .set-field{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .set-field label{ font-size:clamp(9px,1.2vh,11px); letter-spacing:.04em; color:var(--muted); font-weight:700; }
+  .set-field input{
+    font-family:var(--mono); background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:var(--radius-sm); padding:clamp(3px,0.9vh,6px) 4px; font-size:clamp(12px,1.8vh,16px); text-align:center; width:100%; min-width:0;
+    transition:border-color .15s var(--ease);
+  }
+  .set-field input:focus{ outline:none; border-color:var(--accent); }
+  .set-field input:disabled{ opacity:.5; }
+
+  /* Primary actions: Start / Pause — large and prominent */
+  .btn-row-primary{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+  .btn-row-primary button{
+    padding:clamp(4px,1vh,11px) 10px;
+    font-size:clamp(12px, 1.8vh, 17px);
+    font-weight:800;
+    border-radius:var(--radius-md);
+    min-height:clamp(26px,4.4vh,34px);
+  }
+  .btn-start{ border-color:var(--accent); background:color-mix(in srgb, var(--accent) 14%, var(--panel-2)); }
+  .btn-start:hover:not(:disabled){ background:var(--accent); color:#0B0E14; border-color:var(--accent); }
+  .btn-pause{ border-color:var(--gold); }
+  .btn-pause:hover:not(:disabled){ background:var(--gold); color:#0B0E14; border-color:var(--gold); }
+
+  /* Secondary actions: Finish / Reset — smaller */
+  .btn-row-secondary{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+  .btn-row-secondary.single{ grid-template-columns:1fr; }
+  .btn-row-secondary button{ padding:clamp(3px,0.9vh,6px) 8px; font-size:clamp(11px,1.4vh,13px); }
+  .btn-finish{ border-color:var(--gold); color:var(--gold); }
+  .btn-finish:hover:not(:disabled){ background:var(--gold); color:#0B0E14; }
+
+
+  .clock-wrap{ display:flex; justify-content:center; }
+  .clock-card{ width:100%; max-width:640px; }
+  .clock-card .digits{ font-size:clamp(28px, 4.6vh, 64px); padding:2px 0; }
+  .clock-card .lane-num{ font-size:clamp(13px,1.8vh,17px); }
+
+  .result-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-lg);
+    padding:clamp(4px,1.3vh,16px) clamp(12px,1.4vw,18px); box-shadow:var(--shadow); display:flex; flex-direction:column; gap:clamp(3px,0.8vh,8px);
+    justify-content:center;
+    transition:border-color .25s var(--ease), background-color .3s var(--ease);
+    min-width:0; height:100%;
+  }
+  .result-head{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .result-dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+  .result-name{ flex:1; font-weight:700; font-size:clamp(13px,1.8vh,16px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:40px; }
+  .rank-badge{ font-size:clamp(12px,1.6vh,15px); }
+
+  .result-stats{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(4px,0.8vh,8px); }
+  .stat{ background:var(--panel-2); border-radius:var(--radius-sm); padding:clamp(3px,0.9vh,8px) clamp(6px,1vw,10px); display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .stat-label{ font-size:clamp(9px,1.1vh,10.5px); letter-spacing:.04em; color:var(--muted); font-weight:700; }
+  .stat-value{ font-family:var(--mono); font-size:clamp(12px,1.6vh,15px); font-weight:700; font-variant-numeric:tabular-nums; }
+
+  .remaining-block{
+    background:color-mix(in srgb, var(--success) 12%, var(--panel-2));
+    border:1px solid color-mix(in srgb, var(--success) 30%, var(--line));
+    border-radius:var(--radius-sm); padding:clamp(4px,0.9vh,9px) clamp(8px,1.2vw,12px);
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    transition:background-color .2s var(--ease), border-color .2s var(--ease);
+  }
+  .remaining-block .remaining-label{ font-size:clamp(9px,1.2vh,11px); letter-spacing:.04em; color:var(--muted); font-weight:700; }
+  .remaining-block .remaining-value{ font-family:var(--mono); font-size:clamp(14px,2.1vh,19px); font-weight:800; font-variant-numeric:tabular-nums; color:var(--success); }
+  .remaining-block.over{
+    background:color-mix(in srgb, var(--danger) 12%, var(--panel-2));
+    border-color:color-mix(in srgb, var(--danger) 32%, var(--line));
+  }
+  .remaining-block.over .remaining-value{ color:var(--danger); }
+
+  footer.note{ margin-top:0; color:var(--muted); font-size:clamp(10px,1.2vh,12.5px); text-align:center; line-height:1.3; flex:none; }
+
+  @media (max-width: 380px){
+    .digits{ font-size:clamp(22px, 8vh, 40px); }
+    .clock-card .digits{ font-size:clamp(26px, 8vh, 52px); }
+  }
+
+  @media (min-width: 900px){
+    .wrap{
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      grid-template-areas:
+        "top top"
+        "countdown countdown"
+        "teams results"
+        "footer footer";
+      align-items:start;
+    }
+    header.top{ grid-area:top; }
+    #panel-countdown{ grid-area:countdown; }
+    #panel-teams{ grid-area:teams; }
+    #panel-results{ grid-area:results; }
+    footer.note{ grid-area:footer; }
+    .global-controls{ justify-content:flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1><span>นับถอยหลัง</span></h1>
+    </div>
+    <div class="global-controls">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="สลับธีมสว่างและมืด">
+        <span class="thumb"></span>
+      </button>
+      <button class="btn-ghost" id="muteBtn" type="button">🔔 เปิดเสียง</button>
+      <button class="btn-ghost" id="resetAllBtn" type="button">รีเซ็ตทั้งหมด</button>
+      <button class="btn-start-all" id="startAllBtn" type="button">⏱ เริ่มพร้อมกันทั้งหมด</button>
+    </div>
+  </header>
+
+  <section class="section-block" id="panel-countdown">
+    <div class="section-head">
+      <h2 class="section-title">นับถอยหลัง</h2>
+      <p class="section-hint">ตั้งเวลานับถอยหลังรวมของการแข่งขัน สามารถทำงานอิสระ หรือเริ่มพร้อมกันกับนาฬิกาจับเวลาของทั้งสามทีมโดยใช้ปุ่ม "เริ่มพร้อมกันทั้งหมด"</p>
+    </div>
+    <div class="clock-wrap" id="clockWrap"></div>
+  </section>
+
+  <section class="section-block" id="panel-teams">
+    <div class="section-head">
+      <h2 class="section-title">ทีม</h2>
+      <p class="section-hint">แต่ละทีมทำงานเป็นนาฬิกาจับเวลาอิสระ กดปุ่ม "เสร็จสิ้น" เมื่อทีมทำภารกิจเสร็จเพื่อบันทึกเวลา</p>
+    </div>
+    <div class="lanes" id="lanes"></div>
+  </section>
+
+  <section class="section-block" id="panel-results">
+    <div class="section-head">
+      <h2 class="section-title">ผลลัพธ์</h2>
+      <p class="section-hint">เมื่อทีมใดทีมหนึ่งกดปุ่ม "เสร็จสิ้น" จะปรากฏผลลัพธ์ของแต่ละทีมในตารางด้านล่าง</p>
+    <div class="results-grid" id="resultsGrid"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const TEAM_COLORS = ['var(--t1)', 'var(--t2)', 'var(--t3)'];
+  const CLOCK_COLOR = 'var(--clock)';
+  const DEFAULT_CLOCK_SECONDS = 10 * 60;
+
+  const STATUS_TH = { idle:'ยังไม่เริ่ม', running:'กำลังทำงาน', paused:'หยุดชั่วคราว', finished:'เสร็จสิ้น' };
+
+  let soundOn = true;
+  let audioCtx = null;
+
+  function ensureAudio(){
+    if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+    return audioCtx;
+  }
+
+  function playAlarm(){
+    if(!soundOn) return;
+    try{
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      [0, 0.35, 0.7].forEach((offset)=>{
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, now + offset);
+        gain.gain.setValueAtTime(0, now + offset);
+        gain.gain.linearRampToValueAtTime(0.18, now + offset + 0.02);
+        gain.gain.linearRampToValueAtTime(0, now + offset + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.3);
+      });
+    }catch(e){}
+  }
+
+  function playChime(){
+    if(!soundOn) return;
+    try{
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1046, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+      gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }catch(e){}
+  }
+
+  function fmtHMS(totalSeconds){
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(totalSeconds/3600);
+    const m = Math.floor((totalSeconds%3600)/60);
+    const s = totalSeconds%60;
+    return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
+  }
+
+  function fmtHM(totalSeconds){
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    const h = Math.floor(totalSeconds/3600);
+    const m = Math.round((totalSeconds%3600)/60);
+    if(h === 0 && m === 0) return 'น้อยกว่า 1 นาที';
+    let parts = [];
+    if(h) parts.push(h + ' ชม.');
+    parts.push(m + ' นาที');
+    return parts.join(' ');
+  }
+
+  class TeamStopwatch{
+    constructor(index, root){
+      this.index = index;
+      this.root = root;
+      this.color = TEAM_COLORS[index];
+      this.name = 'ทีม ' + (index+1);
+      this.elapsed = 0;
+      this.startedAt = null;
+      this.finishedElapsed = null;
+      this.state = 'idle';
+      this.rafId = null;
+
+      this.cacheEls();
+      this.bindEvents();
+      this.update();
+    }
+
+    cacheEls(){
+      this.el = {
+        nameInput: this.root.querySelector('.team-name'),
+        statusPill: this.root.querySelector('.status-pill'),
+        digits: this.root.querySelector('.digits'),
+        startBtn: this.root.querySelector('.btn-start'),
+        pauseBtn: this.root.querySelector('.btn-pause'),
+        finishBtn: this.root.querySelector('.btn-finish'),
+        resetBtn: this.root.querySelector('.btn-reset'),
+      };
+    }
+
+    bindEvents(){
+      this.el.nameInput.addEventListener('input', ()=>{
+        this.name = this.el.nameInput.value.trim() || ('ทีม ' + (this.index+1));
+        renderResults();
+      });
+      this.el.startBtn.addEventListener('click', ()=> this.start());
+      this.el.pauseBtn.addEventListener('click', ()=> this.pause());
+      this.el.finishBtn.addEventListener('click', ()=> this.finish());
+      this.el.resetBtn.addEventListener('click', ()=> this.reset());
+    }
+
+    start(){
+      if(this.state === 'running' || this.state === 'finished') return;
+      this.startedAt = Date.now() - this.elapsed*1000;
+      this.state = 'running';
+      this.loop();
+      this.update();
+    }
+
+    pause(){
+      if(this.state !== 'running') return;
+      this.elapsed = (Date.now() - this.startedAt)/1000;
+      this.state = 'paused';
+      cancelAnimationFrame(this.rafId);
+      this.update();
+      renderResults();
+    }
+
+    finish(){
+      if(this.state === 'idle' || this.state === 'finished') return;
+      if(this.state === 'running'){
+        this.elapsed = (Date.now() - this.startedAt)/1000;
+        cancelAnimationFrame(this.rafId);
+      }
+      this.finishedElapsed = this.elapsed;
+      this.state = 'finished';
+      this.root.classList.add('finished');
+      playChime();
+      this.update();
+      renderResults();
+    }
+
+    reset(){
+      cancelAnimationFrame(this.rafId);
+      this.state = 'idle';
+      this.elapsed = 0;
+      this.startedAt = null;
+      this.finishedElapsed = null;
+      this.root.classList.remove('finished');
+      this.el.digits.classList.remove('tick');
+      this.update();
+      renderResults();
+    }
+
+    loop(){
+      if(this.state !== 'running') return;
+      this.elapsed = (Date.now() - this.startedAt)/1000;
+      this.update();
+      this.rafId = requestAnimationFrame(()=> this.loop());
+    }
+
+    currentElapsedLive(){
+      if(this.state === 'running') return (Date.now() - this.startedAt)/1000;
+      if(this.state === 'finished') return this.finishedElapsed;
+      return this.elapsed;
+    }
+
+    update(){
+      const shown = this.state === 'finished' ? this.finishedElapsed : this.elapsed;
+      this.el.digits.textContent = fmtHMS(shown);
+      this.el.digits.classList.toggle('tick', this.state==='running');
+
+      this.el.statusPill.classList.remove('running','paused','finished');
+      if(this.state === 'running'){ this.el.statusPill.classList.add('running'); }
+      if(this.state === 'paused'){ this.el.statusPill.classList.add('paused'); }
+      if(this.state === 'finished'){ this.el.statusPill.classList.add('finished'); }
+      this.el.statusPill.textContent = STATUS_TH[this.state];
+
+      this.el.startBtn.disabled = (this.state === 'running' || this.state === 'finished');
+      this.el.pauseBtn.disabled = (this.state !== 'running');
+      this.el.finishBtn.disabled = (this.state === 'idle' || this.state === 'finished');
+      this.el.startBtn.textContent = this.state === 'paused' ? '▶ เริ่มต่อ' : '▶ เริ่ม';
+    }
+  }
+
+  class CountdownClock{
+    constructor(root){
+      this.root = root;
+      this.totalSeconds = DEFAULT_CLOCK_SECONDS;
+      this.remaining = DEFAULT_CLOCK_SECONDS;
+      this.state = 'idle';
+      this.endAt = null;
+      this.rafId = null;
+
+      this.cacheEls();
+      this.bindEvents();
+      this.renderInputsFromSeconds();
+      this.update();
+    }
+
+    cacheEls(){
+      this.el = {
+        statusPill: this.root.querySelector('.status-pill'),
+        digits: this.root.querySelector('.digits'),
+        trackFill: this.root.querySelector('.track-fill'),
+        hInput: this.root.querySelector('.set-h'),
+        mInput: this.root.querySelector('.set-m'),
+        sInput: this.root.querySelector('.set-s'),
+        startBtn: this.root.querySelector('.btn-start'),
+        pauseBtn: this.root.querySelector('.btn-pause'),
+        resetBtn: this.root.querySelector('.btn-reset'),
+      };
+    }
+
+    bindEvents(){
+      this.el.startBtn.addEventListener('click', ()=> this.start());
+      this.el.pauseBtn.addEventListener('click', ()=> this.pause());
+      this.el.resetBtn.addEventListener('click', ()=> this.reset());
+      [this.el.hInput, this.el.mInput, this.el.sInput].forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          if(this.state === 'idle'){
+            this.readSecondsFromInputs();
+            this.remaining = this.totalSeconds;
+            this.update();
+            renderResults();
+          }
+        });
+      });
+    }
+
+    readSecondsFromInputs(){
+      const h = Math.max(0, parseInt(this.el.hInput.value,10) || 0);
+      const m = Math.max(0, Math.min(59, parseInt(this.el.mInput.value,10) || 0));
+      const s = Math.max(0, Math.min(59, parseInt(this.el.sInput.value,10) || 0));
+      this.totalSeconds = h*3600 + m*60 + s;
+      if(this.totalSeconds <= 0) this.totalSeconds = 1;
+    }
+
+    renderInputsFromSeconds(){
+      const h = Math.floor(this.totalSeconds/3600);
+      const m = Math.floor((this.totalSeconds%3600)/60);
+      const s = this.totalSeconds%60;
+      this.el.hInput.value = h;
+      this.el.mInput.value = m;
+      this.el.sInput.value = s;
+    }
+
+    setInputsDisabled(disabled){
+      this.el.hInput.disabled = disabled;
+      this.el.mInput.disabled = disabled;
+      this.el.sInput.disabled = disabled;
+    }
+
+    start(){
+      if(this.state === 'finished' || this.state === 'running') return;
+      if(this.state === 'idle'){
+        this.readSecondsFromInputs();
+        this.remaining = this.totalSeconds;
+      }
+      this.endAt = Date.now() + this.remaining*1000;
+      this.state = 'running';
+      this.setInputsDisabled(true);
+      this.loop();
+      this.update();
+    }
+
+    pause(){
+      if(this.state !== 'running') return;
+      this.remaining = Math.max(0, (this.endAt - Date.now())/1000);
+      this.state = 'paused';
+      cancelAnimationFrame(this.rafId);
+      this.update();
+      renderResults();
+    }
+
+    reset(){
+      cancelAnimationFrame(this.rafId);
+      this.state = 'idle';
+      this.readSecondsFromInputs();
+      this.remaining = this.totalSeconds;
+      this.setInputsDisabled(false);
+      this.root.classList.remove('finished');
+      this.el.digits.classList.remove('danger','tick');
+      this.update();
+      renderResults();
+    }
+
+    loop(){
+      if(this.state !== 'running') return;
+      const remainingMs = this.endAt - Date.now();
+      this.remaining = Math.max(0, remainingMs/1000);
+      if(remainingMs <= 0){
+        this.finish();
+        return;
+      }
+      this.update();
+      this.rafId = requestAnimationFrame(()=> this.loop());
+    }
+
+    finish(){
+      this.remaining = 0;
+      this.state = 'finished';
+      this.setInputsDisabled(false);
+      this.root.classList.add('finished');
+      playAlarm();
+      this.update();
+      renderResults();
+    }
+
+    liveRemaining(){
+      if(this.state === 'running') return Math.max(0, (this.endAt - Date.now())/1000);
+      return this.remaining;
+    }
+
+    update(){
+      this.el.digits.textContent = fmtHMS(this.remaining);
+      const pct = this.totalSeconds > 0 ? (this.remaining/this.totalSeconds)*100 : 0;
+      this.el.trackFill.style.width = pct + '%';
+
+      this.el.digits.classList.toggle('danger', this.state==='running' && this.remaining <= 10 && this.remaining > 0);
+      this.el.digits.classList.toggle('tick', this.state==='running' && this.remaining > 10);
+
+      this.el.statusPill.classList.remove('running','paused','finished');
+      if(this.state === 'running'){ this.el.statusPill.classList.add('running'); }
+      if(this.state === 'paused'){ this.el.statusPill.classList.add('paused'); }
+      if(this.state === 'finished'){ this.el.statusPill.classList.add('finished'); }
+      this.el.statusPill.textContent = this.state === 'finished' ? 'หมดเวลา' : STATUS_TH[this.state];
+
+      this.el.startBtn.disabled = (this.state === 'running' || this.state === 'finished');
+      this.el.pauseBtn.disabled = (this.state !== 'running');
+      this.el.startBtn.textContent = this.state === 'paused' ? '▶ เริ่มต่อ' : '▶ เริ่ม';
+    }
+  }
+
+  function teamLaneTemplate(index){
+    return `
+      <div class="lane" data-team="${index}">
+        <div class="lane-head">
+          <div class="lane-num">${index+1}</div>
+          <input class="team-name" value="ทีม ${index+1}" maxlength="24" />
+          <span class="status-pill">ยังไม่เริ่ม</span>
+        </div>
+        <div class="digits">00:00:00</div>
+        <div class="btn-row-primary">
+          <button class="btn-start" type="button">▶ เริ่ม</button>
+          <button class="btn-pause" type="button">❚❚ หยุด</button>
+        </div>
+        <div class="btn-row-secondary">
+          <button class="btn-finish" type="button">🏁 เสร็จสิ้น</button>
+          <button class="btn-reset" type="button">↺ รีเซ็ต</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function clockTemplate(){
+    return `
+      <div class="lane clock clock-card" data-team="clock">
+        <div class="lane-head">
+          <div class="lane-num" style="background:${CLOCK_COLOR}">⏰</div>
+          <span style="flex:1;font-weight:700;font-size:16px;">นาฬิกานับถอยหลังการแข่งขัน</span>
+          <span class="status-pill">ยังไม่เริ่ม</span>
+        </div>
+        <div class="digits">00:10:00</div>
+        <div class="track"><div class="track-fill"></div></div>
+        <div class="set-row">
+          <div class="set-field"><label>ชม.</label><input class="set-h" type="number" min="0" max="23" value="0"></div>
+          <div class="set-field"><label>นาที</label><input class="set-m" type="number" min="0" max="59" value="10"></div>
+          <div class="set-field"><label>วินาที</label><input class="set-s" type="number" min="0" max="59" value="0"></div>
+        </div>
+        <div class="btn-row-primary">
+          <button class="btn-start" type="button">▶ เริ่ม</button>
+          <button class="btn-pause" type="button">❚❚ หยุด</button>
+        </div>
+        <div class="btn-row-secondary single">
+          <button class="btn-reset" type="button">↺ รีเซ็ต</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const lanesEl = document.getElementById('lanes');
+  const clockWrapEl = document.getElementById('clockWrap');
+  const resultsGridEl = document.getElementById('resultsGrid');
+  const allTeams = [];
+
+  for(let i=0;i<3;i++){
+    lanesEl.insertAdjacentHTML('beforeend', teamLaneTemplate(i));
+  }
+  Array.from(lanesEl.querySelectorAll('.lane')).forEach((root, i)=>{
+    allTeams.push(new TeamStopwatch(i, root));
+  });
+
+  clockWrapEl.insertAdjacentHTML('beforeend', clockTemplate());
+  const clock = new CountdownClock(clockWrapEl.querySelector('.lane'));
+
+  const MEDALS = ['🥇','🥈','🥉'];
+
+  function renderResults(){
+    const finishedSorted = allTeams.filter(t => t.state === 'finished').slice().sort((a,b)=> a.finishedElapsed - b.finishedElapsed);
+    const rankOf = new Map();
+    finishedSorted.forEach((t, i)=> rankOf.set(t, i));
+
+    const countdownVal = clock.liveRemaining();
+
+    let html = '';
+    allTeams.forEach((t)=>{
+      const elapsed = t.currentElapsedLive();
+      const remaining = countdownVal - elapsed;
+      const over = remaining < 0;
+      const rank = rankOf.has(t) ? rankOf.get(t) : -1;
+      const rankBadge = rank >= 0 && rank < 3 ? `<span class="rank-badge">${MEDALS[rank]}</span>` : '';
+      const stateClass = t.state;
+      const stateLabel = STATUS_TH[t.state];
+
+      html += `
+        <div class="result-card">
+          <div class="result-head">
+            <span class="result-dot" style="background:${t.color}"></span>
+            <span class="result-name">${escapeHtml(t.name)}</span>
+            ${rankBadge}
+            <span class="status-pill ${stateClass}">${stateLabel}</span>
+          </div>
+          <div class="result-stats">
+            <div class="stat">
+              <span class="stat-label">นับถอยหลัง</span>
+              <span class="stat-value">${fmtHMS(countdownVal)}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">เวลาทั้งหมดที่ใช้</span>
+              <span class="stat-value">${fmtHMS(elapsed)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    resultsGridEl.innerHTML = html;
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  renderResults();
+  setInterval(renderResults, 200);
+
+  document.getElementById('muteBtn').addEventListener('click', function(){
+    soundOn = !soundOn;
+    this.textContent = soundOn ? '🔔 เปิดเสียง' : '🔕 ปิดเสียง';
+  });
+
+  document.getElementById('resetAllBtn').addEventListener('click', ()=>{
+    allTeams.forEach(t => t.reset());
+    clock.reset();
+  });
+
+  document.getElementById('startAllBtn').addEventListener('click', ()=>{
+    ensureAudio();
+    allTeams.forEach(t => { if(t.state !== 'idle') t.reset(); });
+    if(clock.state !== 'idle') clock.reset();
+
+    const now = Date.now();
+    allTeams.forEach(t => {
+      t.startedAt = now;
+      t.state = 'running';
+      t.loop();
+      t.update();
+    });
+
+    clock.readSecondsFromInputs();
+    clock.remaining = clock.totalSeconds;
+    clock.endAt = now + clock.remaining*1000;
+    clock.state = 'running';
+    clock.setInputsDisabled(true);
+    clock.loop();
+    clock.update();
+    renderResults();
+  });
+
+  const themeToggle = document.getElementById('themeToggle');
+  function currentTheme(){ return document.documentElement.getAttribute('data-theme') || 'dark'; }
+  themeToggle.addEventListener('click', ()=>{
+    const next = currentTheme() === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('countdownArenaTheme', next); }catch(e){}
+  });
+
+  document.addEventListener('click', function unlock(){
+    ensureAudio();
+    document.removeEventListener('click', unlock);
+  }, { once:true });
+
+})();
+</script>
+</body>
+</html>
